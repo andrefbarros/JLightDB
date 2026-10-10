@@ -1,13 +1,19 @@
 package io.jlightdb;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
+/**
+ * In-memory implementation of the {@link KeyValueStore} interface.
+ *
+ * <p>Stores key-value pairs in memory using a {@link HashMap}.
+ * Data is not persisted and will be lost when the application terminates.
+ *
+ * <p>This implementation is not thread-safe. Concurrent modifications
+ * require external synchronization.
+ */
 public class InMemoryKeyValueStore implements KeyValueStore {
 
-    private final HashMap<String, byte[]> db = new HashMap<>();
+    private final Map<String, byte[]> db = new HashMap<>();
 
     @Override
     public void put(String key, byte[] value) {
@@ -21,10 +27,6 @@ public class InMemoryKeyValueStore implements KeyValueStore {
     public Optional<byte[]> get(String key) {
         Objects.requireNonNull(key, "Key cannot be null");
 
-        if (!containsKey(key)) {
-            return Optional.empty();
-        }
-
         byte[] value = db.get(key);
 
         if (value == null) {
@@ -37,10 +39,6 @@ public class InMemoryKeyValueStore implements KeyValueStore {
     @Override
     public boolean delete(String key) {
         Objects.requireNonNull(key, "Key cannot be null");
-
-        if (!containsKey(key)) {
-            return false;
-        }
 
         return db.remove(key) != null;
     }

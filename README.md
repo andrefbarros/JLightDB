@@ -35,9 +35,13 @@ No external database service required.
 - **Persistent:** Data survives application restarts.
 - **Reliable:** Explicit guarantees around consistency, concurrency and crash recovery.
 
+## API Contract
+
+For detailed information about supported operations, expected behavior, and API guarantees, see [this](docs/api.md) document to learn more about the implementation.
+
 ## Roadmap
 
-- [ ] Key-value operations (`put`, `get`, `delete`)
+- [X] Key-value operations (`put`, `get`, `delete`)
 - [ ] File-backed storage
 - [ ] Thread-safe operations within one process
 - [ ] Write-ahead logging (WAL)
