@@ -163,4 +163,23 @@ public class InMemoryKeyValueStoreTest {
     void containsKeyShouldReturnFalseForMissingKey() {
         Assertions.assertFalse(inMemoryKeyValueStore.containsKey("invalid"));
     }
+
+    @Test
+    @DisplayName("Should reject checking whether a null key exists stored in database")
+    void containsKeyShouldRejectNullKey() {
+        Assertions.assertThrows(
+                NullPointerException.class,
+                () -> inMemoryKeyValueStore.containsKey(null)
+        );
+    }
+
+    @Test
+    @DisplayName("Should delete correctly the key and do not allow performing deleting again against same key, returning FALSE")
+    void deleteShouldReturnFalseAfterFirstDeletion() {
+        inMemoryKeyValueStore.put("test", new byte[]{1});
+
+        Assertions.assertTrue(inMemoryKeyValueStore.delete("test"));
+        Assertions.assertFalse(inMemoryKeyValueStore.delete("test"));
+    }
+
 }
