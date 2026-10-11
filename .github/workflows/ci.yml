@@ -29,15 +29,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: gradle
 
+      # Caches Gradle dependencies and validates the checked-in wrapper jar.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '9.8.1'
 
-      - name: Build and run checks
-        run: gradle check --no-daemon
+      - name: Build and test
+        run: ./gradlew clean build
 
       - name: Upload test reports
         if: always()
