@@ -13,40 +13,40 @@ import java.util.*;
  */
 public class InMemoryKeyValueStore implements KeyValueStore {
 
-    private final Map<String, byte[]> db = new HashMap<>();
+	private final Map<String, byte[]> db = new HashMap<>();
 
-    @Override
-    public void put(String key, byte[] value) {
-        Objects.requireNonNull(key, "Key cannot be null");
-        Objects.requireNonNull(value, "Value cannot be null");
+	@Override
+	public void put(String key, byte[] value) {
+		Objects.requireNonNull(key, "Key cannot be null");
+		Objects.requireNonNull(value, "Value cannot be null");
 
-        db.put(key, Arrays.copyOf(value, value.length));
-    }
+		db.put(key, Arrays.copyOf(value, value.length));
+	}
 
-    @Override
-    public Optional<byte[]> get(String key) {
-        Objects.requireNonNull(key, "Key cannot be null");
+	@Override
+	public Optional<byte[]> get(String key) {
+		Objects.requireNonNull(key, "Key cannot be null");
 
-        byte[] value = db.get(key);
+		byte[] value = db.get(key);
 
-        if (value == null) {
-            return Optional.empty();
-        }
+		if (value == null) {
+			return Optional.empty();
+		}
 
-        return Optional.of(Arrays.copyOf(value, value.length));
-    }
+		return Optional.of(Arrays.copyOf(value, value.length));
+	}
 
-    @Override
-    public boolean delete(String key) {
-        Objects.requireNonNull(key, "Key cannot be null");
+	@Override
+	public boolean delete(String key) {
+		Objects.requireNonNull(key, "Key cannot be null");
 
-        return db.remove(key) != null;
-    }
+		return db.remove(key) != null;
+	}
 
-    @Override
-    public boolean containsKey(String key) {
-        Objects.requireNonNull(key, "Key cannot be null");
+	@Override
+	public boolean containsKey(String key) {
+		Objects.requireNonNull(key, "Key cannot be null");
 
-        return db.containsKey(key);
-    }
+		return db.containsKey(key);
+	}
 }
