@@ -1,6 +1,7 @@
 package io.jlightdb;
 
 import io.jlightdb.enums.OperationType;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -86,5 +87,22 @@ class RecordSerializerTest {
                 NullPointerException.class,
                 () -> serializer.encode(null)
         );
+    }
+
+    @Test
+    void decodeShouldProduceValidOperationRecord() {
+        Operation operation = new Operation(
+                "name",
+                new byte[]{1, 2, 3},
+                OperationType.PUT
+        );
+
+        byte[] encoded = serializer.encode(operation);
+
+        Operation decoded = serializer.decode(encoded);
+
+        Assertions.assertEquals(operation.key(), decoded.key());
+        Assertions.assertEquals(operation.operation(), decoded.operation());
+        Assertions.assertArrayEquals(operation.value(), decoded.value());
     }
 }
