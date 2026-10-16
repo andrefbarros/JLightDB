@@ -61,7 +61,7 @@ public class RecordSerializer {
 		byteBuffer.put(keyInByte);
 
 		if (operation.operation() == OperationType.PUT) {
-			validateValueLength(operation.value().length);
+			validateValueLength(operation.value().length, 0);
 			byteBuffer.put(operation.value());
 		}
 
@@ -70,6 +70,13 @@ public class RecordSerializer {
 	 	return byteBuffer.array();
 	}
 
+	/**
+	 * Method used to decode data taking in consideration the type of operation PUT or DELETE
+	 * Receives a byte array object that holds the key-value pair related values
+	 *
+	 * @param data the byte array
+	 * @return the operation object
+	 */
 	public Operation decode(byte[] data) {
 		Objects.requireNonNull(data, "Data cannot be null.");
 
@@ -95,7 +102,7 @@ public class RecordSerializer {
 
 		int keyValueLength = readData.getInt();
 
-		validateValueLength(keyValueLength);
+		validateValueLength(keyValueLength, operationValue);
 
 		byte[] keyByteArray = new byte[keyLength];
 		readData.get(keyByteArray);
@@ -115,14 +122,14 @@ public class RecordSerializer {
 	}
 
 	private static void validateKeyLength(int keyValueLength) {
-		if (keyValueLength < 0 || keyValueLength > MAX_VALUE_SIZE) {
-			throw new InvalidDataException("Key value length is invalid. Cannot proceed with decoding data.");
+		if (keyValueLength < 0 || keyValueLength > MAX_KEY_SIZE) {
+			throw new InvalidDataException("Key length is invalid. Cannot proceed with decoding data.");
 		}
 	}
 
-	private static void validateValueLength(int keyLength) {
-		if (keyLength < 0 || keyLength > MAX_KEY_SIZE) {
-			throw new InvalidDataException("Key length is invalid. Cannot proceed with decoding data.");
+	private static void validateValueLength(int keyLength, int operationValue) {
+		if (keyLength < 0 || keyLength > MAX_VALUE_SIZE || (operationValue == 1 && keyLength != 0)) {
+			throw new InvalidDataException("Key value length is invalid. Cannot proceed with decoding data.");
 		}
 	}
 
