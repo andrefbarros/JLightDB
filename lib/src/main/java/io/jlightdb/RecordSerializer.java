@@ -6,10 +6,28 @@ import io.jlightdb.exceptions.InvalidOperationException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.zip.CRC32;
 
+/**
+ * Serializes and deserializes JLightDB key-value operations
+ * using the binary record format.
+ *
+ * <p>Each record contains an operation type, key and value lengths,
+ * UTF-8 encoded key bytes, optional value bytes, and a CRC32 checksum.
+ *
+ * <p>Supported operations are {@link OperationType#PUT} and
+ * {@link OperationType#DELETE}.
+ *
+ * <p>This class handles individual records only. File headers,
+ * disk persistence, and recovery are managed separately.
+ *
+ * @see Operation
+ * @see OperationType
+ */
 public class RecordSerializer {
 
 	private static final int MIN_DATA_SIZE = 13;
@@ -17,11 +35,22 @@ public class RecordSerializer {
 	private static final int MAX_VALUE_SIZE = 16 * 1024 * 1024;
 
 	/**
-	 * Method used to encode key-value pair taking in consideration the type of operation PUT or DELETE
-	 * Receives an operation object that holds (key, value, operationType).
+	 * Encodes a key-value operation into its binary representation.
 	 *
-	 * @param operation the operation object with the key-value pair and operation to apply
-	 * @return the encoded key-value pair operation
+	 * <p>The resulting record follows the JLightDB binary storage format
+	 * and includes a CRC32 checksum for detecting accidental data corruption.
+	 *
+	 * <p>PUT operations require a non-null value, while DELETE operations
+	 * must not contain a value.
+	 *
+	 * <p>Keys are encoded using UTF-8. The maximum supported key size
+	 * is 1024 bytes, and the maximum value size is 16 MiB.
+	 *
+	 * @param operation the operation containing the key, value, and operation type
+	 * @return a byte array containing the serialized operation
+	 * @throws NullPointerException if the operation, key, or operation type is null
+	 * @throws InvalidOperationException if the operation type and value are incompatible
+	 * @throws InvalidDataException if the key or value exceeds the supported size limits
 	 */
 	public byte[] encode(Operation operation) {
 		Objects.requireNonNull(operation, "Operation cannot be null to encode the data");
@@ -45,6 +74,7 @@ public class RecordSerializer {
 		} else {
 			operationConverted = 0;
 			length += valueLength;
+			validateValueLength(operation.value().length, 0);
 		}
 
 		// converted key to byte using UTF-8
@@ -61,7 +91,6 @@ public class RecordSerializer {
 		byteBuffer.put(keyInByte);
 
 		if (operation.operation() == OperationType.PUT) {
-			validateValueLength(operation.value().length, 0);
 			byteBuffer.put(operation.value());
 		}
 
@@ -71,11 +100,25 @@ public class RecordSerializer {
 	}
 
 	/**
-	 * Method used to decode data taking in consideration the type of operation PUT or DELETE
-	 * Receives a byte array object that holds the key-value pair related values
+	 * Decodes a binary record into a key-value operation.
 	 *
-	 * @param data the byte array
-	 * @return the operation object
+	 * <p>Validates the record's CRC32 checksum, operation type,
+	 * declared lengths, and overall structure before reconstructing
+	 * the original operation.
+	 *
+	 * <p>Keys are decoded using UTF-8, and malformed character
+	 * sequences are rejected.
+	 *
+	 * <p>For DELETE operations, the reconstructed value is {@code null}.
+	 * For PUT operations, the original value bytes are preserved.
+	 *
+	 * @param data the byte array containing the serialized record
+	 * @return the decoded {@link Operation}
+	 * @throws NullPointerException if data is null
+	 * @throws InvalidDataException if the record is malformed,
+	 *         corrupted, or exceeds the supported size limits
+	 * @throws InvalidOperationException if the record contains
+	 *         an unsupported operation type
 	 */
 	public Operation decode(byte[] data) {
 		Objects.requireNonNull(data, "Data cannot be null.");
@@ -84,7 +127,7 @@ public class RecordSerializer {
 			throw new InvalidDataException("Data has not the minimum required length to be decoded.");
 		}
 
-		ByteBuffer readData = ByteBuffer.wrap(data);
+		ByteBuffer readData = ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN);
 
 		if (!validateCRC32(readData)) {
 			throw new InvalidDataException("Invalid record checksum.");
@@ -104,9 +147,13 @@ public class RecordSerializer {
 
 		validateValueLength(keyValueLength, operationValue);
 
-		byte[] keyByteArray = new byte[keyLength];
-		readData.get(keyByteArray);
-		String keyString = new String(keyByteArray, StandardCharsets.UTF_8);
+		long expectedSize = MIN_DATA_SIZE + (long) keyLength + keyValueLength;
+
+		if (data.length != expectedSize) {
+			throw new InvalidDataException("Record size does not match declared lengths.");
+		}
+
+		String keyString = getStoredKey(keyLength, readData);
 
 		OperationType operationType;
 		byte[] keyValueArray = null;
@@ -119,6 +166,18 @@ public class RecordSerializer {
 		}
 
 		return new Operation(keyString, keyValueArray, operationType);
+	}
+
+	private static String getStoredKey(int keyLength, ByteBuffer readData) {
+		byte[] keyByteArray = new byte[keyLength];
+		readData.get(keyByteArray);
+
+		CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+		try {
+			return decoder.decode(ByteBuffer.wrap(keyByteArray)).toString();
+		} catch (CharacterCodingException e) {
+			throw new InvalidDataException("Key contains invalid UTF-8 data.");
+		}
 	}
 
 	private static void validateKeyLength(int keyValueLength) {
